@@ -31,7 +31,10 @@ use crate::{
     },
     capture_future::{self, CaptureFuture},
     event::{Event, EventListener},
-    id::{BackendJobId, ExecutionId, FunctionId, LocalCellId, TraitTypeId, TRANSIENT_TASK_BIT},
+    id::{
+        BackendJobId, ExecutionId, FunctionId, LocalCellId, LocalOutputId, TraitTypeId,
+        TRANSIENT_TASK_BIT,
+    },
     id_factory::{IdFactory, IdFactoryWithReuse},
     magic_any::MagicAny,
     raw_vc::{CellId, RawVc},
@@ -143,6 +146,26 @@ pub trait TurboTasksApi: TurboTasksCallApi + Sync + Send {
         task: TaskId,
         index: CellId,
     ) -> Result<Result<TypedCellContent, EventListener>>;
+
+    fn try_read_local_output(
+        &self,
+        _task_id: TaskId,
+        _local_output_id: LocalOutputId,
+        _consistency: ReadConsistency,
+    ) -> Result<Result<RawVc, EventListener>> {
+        todo!("bgw: local outputs");
+    }
+
+    /// INVALIDATION: Be careful with this, it will not track dependencies, so
+    /// using it could break cache invalidation.
+    fn try_read_local_output_untracked(
+        &self,
+        _task: TaskId,
+        _local_output_id: LocalOutputId,
+        _consistency: ReadConsistency,
+    ) -> Result<Result<RawVc, EventListener>> {
+        todo!("bgw: local outputs");
+    }
 
     fn read_task_collectibles(&self, task: TaskId, trait_id: TraitTypeId) -> TaskCollectiblesMap;
 
@@ -1950,6 +1973,15 @@ pub(crate) fn read_local_cell(
         // local cell ids are one-indexed (they use NonZeroU32)
         local_cells[(*local_cell_id as usize) - 1].clone()
     })
+}
+
+pub(crate) async fn read_local_output(
+    _this: &dyn TurboTasksApi,
+    _task_id: TaskId,
+    _local_output_id: LocalOutputId,
+    _consistency: ReadConsistency,
+) -> Result<RawVc> {
+    todo!("bgw: local outputs");
 }
 
 /// Panics if the [`ExecutionId`] does not match the current task's
