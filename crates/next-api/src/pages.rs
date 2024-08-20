@@ -647,6 +647,7 @@ impl PageEndpoint {
                 Value::new(EcmaScriptModulesReferenceSubType::Undefined),
                 IssueSeverity::Error.cell(),
                 None,
+                false,
             )
             .first_module()
             .await?
