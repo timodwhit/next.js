@@ -1,0 +1,34 @@
+[
+    (
+        "t_i",
+        Unknown {
+            original_value: None,
+            reason: "item is ignored",
+            has_side_effects: true,
+        },
+    ),
+    (
+        "t_r",
+        Unknown {
+            original_value: None,
+            reason: "item is ignored",
+            has_side_effects: true,
+        },
+    ),
+    (
+        "w_i",
+        Unknown {
+            original_value: None,
+            reason: "item is ignored",
+            has_side_effects: true,
+        },
+    ),
+    (
+        "w_r",
+        Unknown {
+            original_value: None,
+            reason: "item is ignored",
+            has_side_effects: true,
+        },
+    ),
+]
