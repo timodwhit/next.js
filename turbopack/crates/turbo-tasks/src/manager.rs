@@ -32,7 +32,7 @@ use crate::{
     capture_future::{self, CaptureFuture},
     event::{Event, EventListener},
     id::{
-        BackendJobId, ExecutionId, FunctionId, LocalCellId, LocalOutputId, TraitTypeId,
+        BackendJobId, ExecutionId, FunctionId, LocalCellId, LocalTaskId, TraitTypeId,
         TRANSIENT_TASK_BIT,
     },
     id_factory::{IdFactory, IdFactoryWithReuse},
@@ -150,7 +150,7 @@ pub trait TurboTasksApi: TurboTasksCallApi + Sync + Send {
     fn try_read_local_output(
         &self,
         _task_id: TaskId,
-        _local_output_id: LocalOutputId,
+        _local_output_id: LocalTaskId,
         _consistency: ReadConsistency,
     ) -> Result<Result<RawVc, EventListener>> {
         todo!("bgw: local outputs");
@@ -161,7 +161,7 @@ pub trait TurboTasksApi: TurboTasksCallApi + Sync + Send {
     fn try_read_local_output_untracked(
         &self,
         _task: TaskId,
-        _local_output_id: LocalOutputId,
+        _local_output_id: LocalTaskId,
         _consistency: ReadConsistency,
     ) -> Result<Result<RawVc, EventListener>> {
         todo!("bgw: local outputs");
@@ -1978,7 +1978,7 @@ pub(crate) fn read_local_cell(
 pub(crate) async fn read_local_output(
     _this: &dyn TurboTasksApi,
     _task_id: TaskId,
-    _local_output_id: LocalOutputId,
+    _local_output_id: LocalTaskId,
     _consistency: ReadConsistency,
 ) -> Result<RawVc> {
     todo!("bgw: local outputs");

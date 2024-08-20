@@ -15,7 +15,7 @@ use thiserror::Error;
 use crate::{
     backend::{CellContent, TypedCellContent},
     event::EventListener,
-    id::{ExecutionId, LocalCellId, LocalOutputId},
+    id::{ExecutionId, LocalCellId, LocalTaskId},
     manager::{
         assert_execution_id, current_task, read_local_cell, read_local_output, read_task_cell,
         read_task_output, TurboTasksApi,
@@ -58,7 +58,7 @@ impl Display for CellId {
 pub enum RawVc {
     TaskOutput(TaskId),
     TaskCell(TaskId, CellId),
-    LocalOutput(TaskId, LocalOutputId),
+    LocalOutput(TaskId, LocalTaskId),
     #[serde(skip)]
     LocalCell(ExecutionId, LocalCellId),
 }

@@ -85,7 +85,7 @@ define_id!(
     doc = "non-local task.",
 );
 define_id!(
-    LocalOutputId: u32,
+    LocalTaskId: u32,
     derive(Debug, Serialize, Deserialize),
     serde(transparent),
     doc = "Represents the nth `local_cells` function call inside a task.",
