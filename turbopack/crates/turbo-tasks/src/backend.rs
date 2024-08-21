@@ -123,10 +123,10 @@ impl Display for CachedTaskType {
         match self {
             CachedTaskType::Native { .. } => {}
             CachedTaskType::ResolveNative { .. } => {
-                f.write_str("[resolve] ");
+                f.write_str("[resolve] ")?;
             }
             CachedTaskType::ResolveTrait { .. } => {
-                f.write_str("[resolve trait] ");
+                f.write_str("[resolve trait] ")?;
             }
         }
         f.write_str(&self.get_name())

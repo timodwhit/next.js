@@ -37,7 +37,7 @@ use crate::{
     },
     id_factory::{IdFactory, IdFactoryWithReuse},
     magic_any::MagicAny,
-    raw_vc::{CellId, RawVc},
+    raw_vc::{self, CellId, RawVc},
     registry::{self, get_function},
     task::{
         local_task::{LocalTask, UnscheduledLocalTask},
@@ -152,23 +152,19 @@ pub trait TurboTasksApi: TurboTasksCallApi + Sync + Send {
 
     fn try_read_local_output(
         &self,
-        _task_id: TaskId,
-        _local_output_id: LocalTaskId,
-        _consistency: ReadConsistency,
-    ) -> Result<Result<RawVc, EventListener>> {
-        todo!("bgw: local outputs");
-    }
+        parent_task_id: TaskId,
+        local_task_id: LocalTaskId,
+        consistency: ReadConsistency,
+    ) -> Result<Result<RawVc, EventListener>>;
 
     /// INVALIDATION: Be careful with this, it will not track dependencies, so
     /// using it could break cache invalidation.
     fn try_read_local_output_untracked(
         &self,
-        _task: TaskId,
-        _local_output_id: LocalTaskId,
-        _consistency: ReadConsistency,
-    ) -> Result<Result<RawVc, EventListener>> {
-        todo!("bgw: local outputs");
-    }
+        parent_task_id: TaskId,
+        local_task_id: LocalTaskId,
+        consistency: ReadConsistency,
+    ) -> Result<Result<RawVc, EventListener>>;
 
     fn read_task_collectibles(&self, task: TaskId, trait_id: TraitTypeId) -> TaskCollectiblesMap;
 
@@ -428,6 +424,14 @@ impl CurrentGlobalTaskState {
             local_tasks: Vec::new(),
             local_task_tracker: TaskTracker::new(),
             backend_state,
+        }
+    }
+
+    fn assert_task_id(&self, expected_task_id: TaskId) {
+        if self.task_id != expected_task_id {
+            unimplemented!(
+                "Local tasks can currently only be scheduled/awaited within their parent task"
+            );
         }
     }
 
@@ -886,12 +890,7 @@ impl<B: Backend + 'static> TurboTasks<B> {
         let Some((global_task_state, unscheduled_local_task)) =
             CURRENT_GLOBAL_TASK_STATE.with(|gts| {
                 let mut gts_write = gts.write().unwrap();
-                if parent_task_id != gts_write.task_id {
-                    unimplemented!(
-                        "Local tasks can currently only be scheduled/awaited within their parent \
-                         task"
-                    );
-                }
+                gts_write.assert_task_id(parent_task_id);
                 let local_task = gts_write.get_mut_local_task(local_task_id);
                 let LocalTask::Unscheduled(unscheduled_local_task) = local_task else {
                     return None;
@@ -920,6 +919,13 @@ impl<B: Backend + 'static> TurboTasks<B> {
                 .map(|func_id| &get_function(func_id).function_meta),
         );
 
+        #[cfg(feature = "tokio_tracing")]
+        let description = format!(
+            "[local] (parent: {}) {}",
+            self.backend.get_task_description(parent_task_id),
+            unscheduled_local_task.ty,
+        );
+
         let this = self.pin();
         let future = async move {
             let TaskExecutionSpec { future, span } = unscheduled_local_task.start_execution(&*this);
@@ -942,10 +948,16 @@ impl<B: Backend + 'static> TurboTasks<B> {
                     },
                 };
 
-                CURRENT_GLOBAL_TASK_STATE.with(move |gts| {
+                let done_event = CURRENT_GLOBAL_TASK_STATE.with(move |gts| {
                     let mut gts_write = gts.write().unwrap();
-                    *gts_write.get_mut_local_task(local_task_id) = local_task;
-                })
+                    let scheduled_task =
+                        std::mem::replace(gts_write.get_mut_local_task(local_task_id), local_task);
+                    let LocalTask::Scheduled { done_event } = scheduled_task else {
+                        panic!("local task finished, but was not in the scheduled state?");
+                    };
+                    done_event
+                });
+                done_event.notify(usize::MAX)
             }
             .instrument(span)
             .await
@@ -960,17 +972,10 @@ impl<B: Backend + 'static> TurboTasks<B> {
         let future = TURBO_TASKS.scope(self.pin(), future).in_current_span();
 
         #[cfg(feature = "tokio_tracing")]
-        {
-            let description = format!(
-                "[local] (parent: {}) {}",
-                self.backend.get_task_description(parent_task_id),
-                local_task_ty,
-            );
-            tokio::task::Builder::new()
-                .name(&description)
-                .spawn(future)
-                .unwrap();
-        }
+        tokio::task::Builder::new()
+            .name(&description)
+            .spawn(future)
+            .unwrap();
         #[cfg(not(feature = "tokio_tracing"))]
         tokio::task::spawn(future);
     }
@@ -1452,6 +1457,46 @@ impl<B: Backend + 'static> TurboTasksApi for TurboTasks<B> {
     ) -> Result<TypedCellContent> {
         self.backend
             .try_read_own_task_cell_untracked(current_task, index, self)
+    }
+
+    fn try_read_local_output(
+        &self,
+        parent_task_id: TaskId,
+        local_task_id: LocalTaskId,
+        consistency: ReadConsistency,
+    ) -> Result<Result<RawVc, EventListener>> {
+        // we don't currently support reading a local output outside of it's own task, so
+        // tracked/untracked is currently irrelevant
+        self.try_read_local_output_untracked(parent_task_id, local_task_id, consistency)
+    }
+
+    /// INVALIDATION: Be careful with this, it will not track dependencies, so
+    /// using it could break cache invalidation.
+    fn try_read_local_output_untracked(
+        &self,
+        parent_task_id: TaskId,
+        local_task_id: LocalTaskId,
+        // we don't currently support reading a local output outside of it's own task, so
+        // consistency is currently irrelevant
+        _consistency: ReadConsistency,
+    ) -> Result<Result<RawVc, EventListener>> {
+        CURRENT_GLOBAL_TASK_STATE.with(|gts| loop {
+            let gts_read = gts.read().unwrap();
+            gts_read.assert_task_id(parent_task_id);
+            match gts_read.get_local_task(local_task_id) {
+                LocalTask::Unscheduled(..) => {
+                    drop(gts_read);
+                    self.schedule_local_task(parent_task_id, local_task_id);
+                    continue;
+                }
+                LocalTask::Scheduled { done_event } => {
+                    return Ok(Err(done_event.listen()));
+                }
+                LocalTask::Done { output } => {
+                    return Ok(Ok(output.read_untracked()?));
+                }
+            }
+        })
     }
 
     fn read_task_collectibles(&self, task: TaskId, trait_id: TraitTypeId) -> TaskCollectiblesMap {

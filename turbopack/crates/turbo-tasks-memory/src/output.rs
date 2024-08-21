@@ -21,13 +21,10 @@ impl Output {
 
     /// INVALIDATION: Be careful with this, it will not track dependencies, so
     /// using it could break cache invalidation.
-    pub fn read_untracked(&mut self) -> Result<RawVc> {
+    pub fn read_untracked(&self) -> Result<RawVc> {
         match &self.content {
             None => Err(anyhow!("Output is empty")),
-            Some(OutputContent::Error(err)) => Err(anyhow::Error::new(err.clone())),
-            Some(OutputContent::Link(raw_vc)) => Ok(*raw_vc),
-            Some(OutputContent::Panic(Some(message))) => Err(anyhow!("A task panicked: {message}")),
-            Some(OutputContent::Panic(None)) => Err(anyhow!("A task panicked")),
+            Some(content) => content.read_untracked(),
         }
     }
 
