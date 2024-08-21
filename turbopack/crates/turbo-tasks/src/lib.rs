@@ -56,6 +56,7 @@ mod manager;
 mod native_function;
 mod no_move_vec;
 mod once_map;
+mod output;
 pub mod persisted_graph;
 pub mod primitives;
 mod raw_vc;
@@ -81,7 +82,9 @@ use auto_hash_map::AutoSet;
 pub use collectibles::CollectiblesSource;
 pub use completion::{Completion, Completions};
 pub use display::ValueToString;
-pub use id::{ExecutionId, FunctionId, TaskId, TraitTypeId, ValueTypeId, TRANSIENT_TASK_BIT};
+pub use id::{
+    ExecutionId, FunctionId, LocalTaskId, TaskId, TraitTypeId, ValueTypeId, TRANSIENT_TASK_BIT,
+};
 pub use invalidation::{
     get_invalidator, DynamicEqHash, InvalidationReason, InvalidationReasonKind,
     InvalidationReasonSet, Invalidator,
@@ -95,6 +98,7 @@ pub use manager::{
     TurboTasksBackendApiExt, TurboTasksCallApi, Unused, UpdateInfo,
 };
 pub use native_function::{FunctionMeta, NativeFunction};
+pub use output::OutputContent;
 pub use raw_vc::{CellId, RawVc, ReadRawVcFuture, ResolveTypeError};
 pub use read_ref::ReadRef;
 use rustc_hash::FxHasher;
