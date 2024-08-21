@@ -532,7 +532,7 @@ export type ExportPathMap = {
      *
      * @internal
      */
-    _unknownRouteParams?: readonly string[]
+    _fallbackRouteParams?: readonly string[]
 
     /**
      * @internal

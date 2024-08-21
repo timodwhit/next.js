@@ -2070,7 +2070,7 @@ export default async function build(
                                 {
                                   path: page,
                                   encoded: page,
-                                  unknownRouteParams: [],
+                                  fallbackRouteParams: [],
                                 },
                               ])
                               isStatic = true
@@ -2711,7 +2711,7 @@ export default async function build(
                   defaultMap[route.path] = {
                     page: originalAppPath,
                     query: { __nextSsgPath: route.encoded },
-                    _unknownRouteParams: route.unknownRouteParams,
+                    _fallbackRouteParams: route.fallbackRouteParams,
                     _isDynamicError: isDynamicError,
                     _isAppDir: true,
                     _isRoutePPREnabled: isRoutePPREnabled,
@@ -2948,7 +2948,7 @@ export default async function build(
             }
 
             if (!hasRevalidateZero && isDynamicRoute(originalAppPath)) {
-              const unknownRouteParams = experimentalPPR
+              const fallbackRouteParams = experimentalPPR
                 ? getParamKeys(page)
                 : undefined
 
@@ -2984,7 +2984,7 @@ export default async function build(
 
               // If there are unknown route parameters, we should fallback to
               // the generated prerender shell.
-              if (unknownRouteParams && unknownRouteParams.length > 0) {
+              if (fallbackRouteParams && fallbackRouteParams.length > 0) {
                 fallbackMode = FallbackMode.STATIC_PRERENDER
                 fallbackRevalidate =
                   exportResult.byPath.get(page)?.revalidate ?? false
